@@ -1,0 +1,6 @@
+{
+  "name": "uploader backend",
+  "version": "0.1.0",
+  "description": "Backend API for the web uploader v2.0",
+  "url" : "https://api.upload.mirakulix.org/v1"
+}

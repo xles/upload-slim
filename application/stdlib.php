@@ -1,12 +1,18 @@
 <?php
-function send($arr)
+namespace Uploader;
+use Slim\Slim;
+
+function send($arr, $status = false)
 {
+	$app = Slim::getInstance();
+	if ($status)
+		$app->response->setStatus($status);
 	echo json_encode($arr, JSON_PRETTY_PRINT);
 }
 
 function err($err, $msg = false)
 {
-	$app = \Slim\Slim::getInstance();
+	$app = Slim::getInstance();
 	switch ($err) {
 		case 401:
 			$r = ['error' => 'unauhtorized'];
@@ -18,11 +24,37 @@ function err($err, $msg = false)
 			$r = ['error' => 'not found'];
 			break;
 		default:
-			if ($msg)
-				$r = ['error' => $msg];
-			else
-				$r = ['error' => 'no idea'];
+			$r = ['error' => 'no idea'];
 			break;
 	}
-	$app->halt($err, json_encode($r, JSON_PRETTY_PRINT));
+	if ($msg)
+		$r = ['error' => $msg];
+	try {
+		$app->halt($err, json_encode($r, JSON_PRETTY_PRINT));
+	} catch (\Exception $e) {
+		http_response_code($err);
+		die (json_encode($r, JSON_PRETTY_PRINT));
+	}
+}
+
+function dbQuery($query, $params = false)
+{
+	$app = Slim::getInstance();
+
+	try {
+		$sth = $app->dbh->prepare($query);
+
+		if ($params) {
+			foreach ($params as $key => $value) {
+				if (is_numeric($key))
+					$key = (int) $key+1;
+				$sth->bindParam($key, $value);
+			}
+		}
+		$sth->execute();
+		return $sth->fetchAll();
+	} catch (\PDOException $e) {
+		err(500, $e->getMessage());
+	}
+
 }

@@ -5,16 +5,18 @@ use PDO;
 use PDOException;
 use JWT;
 
-class Authentication {
-
+class User {
 	public static function createUser()
 	{
 		$app = Slim::getInstance();
 	}
 
-	public static function validateUser()
+	public static function validateCredentials()
 	{
 		$app = Slim::getInstance();
+
+		if (empty($_POST['username']) || empty($_POST['password']))
+			err(400, 'empty fields');
 
 		try {
 			$sth = $app->dbh->prepare('SELECT * FROM users WHERE username = ? LIMIT 1');
@@ -24,6 +26,9 @@ class Authentication {
 		} catch (PDOException $e) {
 			err(500, $e->getMessage());
 		}
+
+		if (!$user)
+			err(404, 'User not found.');
 
 		if (password_verify($_POST['password'], $user->password)) {
 			if (password_needs_rehash($user->password, PASSWORD_DEFAULT)) {
@@ -53,4 +58,37 @@ class Authentication {
 			return false;
 		}
 	}
+
+	public static function getUsers()
+	{
+		$app = Slim::getInstance();
+
+		$conf = $app->uploaderConfig;
+
+		if ($conf['userDir'][strlen($conf['userDir'])-1] != '/')
+			$conf['userDir'] .= '/';
+
+		if ($handle = opendir($conf['userDir'])) {
+			while (false !== ($dir = readdir($handle))) {
+				if ((!in_array($dir, $conf['hide']))) {
+					$dirs[] = $dir;
+				}
+			}
+			closedir($handle);
+		} else {
+			return false;
+		}
+
+		foreach ($dirs as $dir) {
+			$path = $conf['userDir'].$dir;
+			if ($size = File::dirsize($path))
+				$tmp[] = [
+					'name' => $dir,
+					'path' => $path,
+					'size' => $size
+				];
+		}
+		return $tmp;
+	}
+
 }
